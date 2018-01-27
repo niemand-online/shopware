@@ -28,11 +28,13 @@ use Enlight_Template_Manager;
 use sExport;
 use Shopware\Models\ProductFeed\ProductFeed;
 use Shopware\Models\ProductFeed\Repository;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class GenerateProductFeedCommand extends ShopwareCommand
+class GenerateProductFeedCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * @var OutputInterface
@@ -135,5 +137,38 @@ class GenerateProductFeedCommand extends ShopwareCommand
         $feedCachePath = $this->cacheDir . '/' . $fileName;
         $handleResource = fopen($feedCachePath, 'w');
         $export->executeExport($handleResource);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'feed-id') {
+            /** @var Repository $productFeedRepository */
+            $productFeedRepository = $this->container->get('models')->getRepository(ProductFeed::class);
+            $queryBuilder = $productFeedRepository->createQueryBuilder('feed');
+
+            if (!empty($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('feed.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_') . '%');
+            }
+
+            $result = $queryBuilder->select(['feed.id'])
+                ->addOrderBy($queryBuilder->expr()->asc('feed.id'))
+                ->getQuery()
+                ->getScalarResult();
+            return array_column($result, 'id');
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        return false;
     }
 }
