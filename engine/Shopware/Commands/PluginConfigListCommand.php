@@ -26,7 +26,12 @@ namespace Shopware\Commands;
 
 use Shopware\Bundle\PluginInstallerBundle\Service\InstallerService;
 use Shopware\Components\Model\ModelManager;
-use Symfony\Component\Console\Command\Command;
+use Shopware\Components\Model\ModelRepository;
+use Shopware\Models\Shop\Repository;
+use Shopware\Models\Shop\Shop;
+use Shopware\Models\Plugin\Plugin;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -37,7 +42,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @copyright Copyright (c) shopware AG (http://www.shopware.de)
  */
-class PluginConfigListCommand extends ShopwareCommand
+class PluginConfigListCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -101,5 +106,52 @@ EOF
             $output->writeln(sprintf('Plugin configuration for Plugin %s and shop %s:', $pluginName, $shop->getName()));
             $output->writeln(print_r($config, true));
         }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'shop') {
+            /** @var ModelManager $em */
+            $em = $this->getContainer()->get('models');
+            /** @var Repository $shopRepository */
+            $shopRepository = $em->getRepository(Shop::class);
+            $queryBuilder = $shopRepository->createQueryBuilder('shop');
+
+            if (is_numeric($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('shop.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_').'%');
+            }
+
+            $result = $queryBuilder->select(['shop.id'])
+                ->addOrderBy($queryBuilder->expr()->asc('shop.id'))
+                ->getQuery()
+                ->getArrayResult();
+
+            return array_column($result, 'id');
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        if ($argumentName === 'plugin') {
+            /** @var ModelRepository $repository */
+            $repository = $this->getContainer()->get('models')->getRepository(Plugin::class);
+            $queryBuilder = $repository->createQueryBuilder('plugin');
+            $result = $queryBuilder->andWhere($queryBuilder->expr()->eq('plugin.capabilityEnable', 'true'))
+                ->select(['plugin.name'])
+                ->getQuery()
+                ->getArrayResult();
+            return array_column($result, 'name');
+        }
+
+        return false;
     }
 }
