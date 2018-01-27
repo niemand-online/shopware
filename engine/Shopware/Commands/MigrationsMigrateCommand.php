@@ -24,12 +24,16 @@
 
 namespace Shopware\Commands;
 
+use ReflectionClass;
+use Shopware\Components\Migrations\AbstractMigration;
 use Shopware\Components\Migrations\Manager;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class MigrationsMigrateCommand extends ShopwareCommand
+class MigrationsMigrateCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -59,5 +63,31 @@ class MigrationsMigrateCommand extends ShopwareCommand
 
         $migrationManger = new Manager($connection, $rootDir . '/_sql/migrations');
         $migrationManger->run($mode);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'mode') {
+            $meta = new ReflectionClass(AbstractMigration::class);
+            $constants = $meta->getConstants();
+            $modeConstantKeys = array_filter(array_keys($constants), function ($constantKey) {
+                return strpos($constantKey, 'MODUS_') === 0;
+            });
+            $modeConstantPseudoValues = array_pad([], count($modeConstantKeys), 0);
+            return array_intersect_key($constants, array_combine($modeConstantKeys, $modeConstantPseudoValues));
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        return false;
     }
 }
