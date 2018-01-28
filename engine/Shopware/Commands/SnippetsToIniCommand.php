@@ -24,6 +24,11 @@
 
 namespace Shopware\Commands;
 
+use Shopware\Components\Model\ModelRepository;
+use Shopware\Models\Shop\Locale;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\ShellPathCompletion;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -34,7 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @copyright Copyright (c) shopware AG (http://www.shopware.de)
  */
-class SnippetsToIniCommand extends ShopwareCommand
+class SnippetsToIniCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -81,5 +86,42 @@ class SnippetsToIniCommand extends ShopwareCommand
         $databaseLoader = $this->container->get('shopware.snippet_database_handler');
         $databaseLoader->setOutput($output);
         $databaseLoader->dumpFromDatabase($input->getOption('target'), $input->getArgument('locale'));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'target') {
+            exit(ShellPathCompletion::PATH_COMPLETION_EXIT_CODE);
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        if ($argumentName === 'locale') {
+            /** @var ModelRepository $localeRepository */
+            $localeRepository = $this->getContainer()->get('models')->getRepository(Locale::class);
+            $queryBuilder = $localeRepository->createQueryBuilder('locale');
+
+            if (strlen($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('locale.locale', ':search'))
+                    ->setParameter('search', addcslashes($context->getCurrentWord(), '_%').'%');
+            }
+
+            $result = $queryBuilder->select(['locale.locale'])
+                ->getQuery()
+                ->getArrayResult();
+
+            return array_column($result, 'locale');
+        }
+
+        return false;
     }
 }
