@@ -492,7 +492,7 @@ class StoreDownloadCommand extends StoreCommand implements CompletionAwareInterf
 
     /**
      * @param string[] $arguments
-     * @return string
+     * @return AccessTokenStruct
      */
     private function getAuthenticationFromArguments(array $arguments)
     {
@@ -504,8 +504,9 @@ class StoreDownloadCommand extends StoreCommand implements CompletionAwareInterf
             $storeClient = $this->container->get('shopware_plugininstaller.store_client');
             return $storeClient->getAccessToken($username, $password);
         } catch (\Exception $e) {
-            throw $e;
         }
+
+        return null;
     }
 
     /**
@@ -530,10 +531,7 @@ class StoreDownloadCommand extends StoreCommand implements CompletionAwareInterf
     public function completeArgumentValues($argumentName, CompletionContext $context)
     {
         if ($argumentName === 'technical-name') {
-            $token = $this->getAuthenticationFromArguments($context->getWords());
-            /** @var LicenceStruct $licences */
-            $licences = [];
-            if ($token) {
+            if (!is_null($token = $this->getAuthenticationFromArguments($context->getWords()))) {
                 $context = new LicenceRequest(null, $this->getVersionFromArguments($context->getWords()), $this->getDomainFromArguments($context->getWords()), $token);
 
                 /** @var PluginStoreService $pluginStoreService */
@@ -541,12 +539,10 @@ class StoreDownloadCommand extends StoreCommand implements CompletionAwareInterf
                     'shopware_plugininstaller.plugin_service_store_production'
                 );
 
-                $licences = $pluginStoreService->getLicences($context);
+                return array_map(function (LicenceStruct $licence) {
+                    return $licence->getTechnicalName();
+                }, $pluginStoreService->getLicences($context));
             }
-
-            return array_map(function (LicenceStruct $licence) {
-                return $licence->getTechnicalName();
-            }, $licences);
         }
 
         return false;
