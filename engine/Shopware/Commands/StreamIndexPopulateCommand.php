@@ -26,7 +26,10 @@ namespace Shopware\Commands;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\AbstractQuery;
+use Shopware\Components\Model\ModelRepository;
 use Shopware\Models\CustomerStream\CustomerStream;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -36,7 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @copyright Copyright (c) shopware AG (http://www.shopware.de)
  */
-class StreamIndexPopulateCommand extends ShopwareCommand
+class StreamIndexPopulateCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -84,5 +87,37 @@ class StreamIndexPopulateCommand extends ShopwareCommand
         }
 
         return $query->getQuery()->getResult(AbstractQuery::HYDRATE_OBJECT);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'streamId') {
+            /** @var ModelRepository $customerStreamRepository */
+            $customerStreamRepository = $this->getContainer()->get('models')->getRepository(CustomerStream::class);
+            $queryBuilder = $customerStreamRepository->createQueryBuilder('stream');
+
+            if (is_numeric($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('stream.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_').'%');
+            }
+
+            $result = $queryBuilder->select(['stream.id'])
+                ->getQuery()
+                ->getArrayResult();
+            return array_column($result, 'id');
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        return false;
     }
 }
