@@ -519,6 +519,7 @@ class StoreDownloadCommand extends StoreCommand implements CompletionAwareInterf
         }
 
         if ($optionName === 'shopware-version') {
+            // TODO improve version completion by listing ALL versions
             return [\Shopware::VERSION];
         }
 

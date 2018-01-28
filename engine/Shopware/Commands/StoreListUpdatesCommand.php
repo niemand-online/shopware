@@ -93,6 +93,7 @@ class StoreListUpdatesCommand extends StoreCommand implements CompletionAwareInt
     public function completeOptionValues($optionName, CompletionContext $context)
     {
         if ($optionName === 'shopware-version') {
+            // TODO improve version completion by listing ALL versions
             return [\Shopware::VERSION];
         }
 

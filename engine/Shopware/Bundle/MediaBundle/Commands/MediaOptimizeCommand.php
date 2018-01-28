@@ -217,6 +217,7 @@ This can take a very long time, depending on the number of files that need to be
     public function completeArgumentValues($argumentName, CompletionContext $context)
     {
         if ($argumentName === 'path') {
+            // TODO set path for shell completion. Hint: the exit code gets checked in the generated completion bash script
             exit(ShellPathCompletion::PATH_COMPLETION_EXIT_CODE);
         }
 

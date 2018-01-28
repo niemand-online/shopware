@@ -139,6 +139,7 @@ class SnippetsToDbCommand extends ShopwareCommand implements CompletionAwareInte
     public function completeOptionValues($optionName, CompletionContext $context)
     {
         if ($optionName === 'source') {
+            // TODO set path for shell completion. Hint: the exit code gets checked in the generated completion bash script
             exit(ShellPathCompletion::PATH_COMPLETION_EXIT_CODE);
         }
 

@@ -109,6 +109,7 @@ class StoreListCommand extends StoreCommand implements CompletionAwareInterface
         }
 
         if ($optionName === 'shopware-version') {
+            // TODO improve version completion by listing ALL versions
             return [\Shopware::VERSION];
         }
 

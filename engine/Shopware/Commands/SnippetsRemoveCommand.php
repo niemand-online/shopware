@@ -80,6 +80,7 @@ class SnippetsRemoveCommand extends ShopwareCommand implements CompletionAwareIn
     public function completeArgumentValues($argumentName, CompletionContext $context)
     {
         if ($argumentName === 'folder') {
+            // TODO set path for shell completion. Hint: the exit code gets checked in the generated completion bash script
             exit(ShellPathCompletion::PATH_COMPLETION_EXIT_CODE);
         }
 

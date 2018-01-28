@@ -169,6 +169,7 @@ class SnippetsFindMissingCommand extends ShopwareCommand implements CompletionAw
     public function completeOptionValues($optionName, CompletionContext $context)
     {
         if ($optionName === 'target') {
+            // TODO set path for shell completion. Hint: the exit code gets checked in the generated completion bash script
             exit(ShellPathCompletion::PATH_COMPLETION_EXIT_CODE);
         }
 
