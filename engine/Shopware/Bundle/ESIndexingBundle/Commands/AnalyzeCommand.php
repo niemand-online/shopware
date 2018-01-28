@@ -25,6 +25,10 @@
 namespace Shopware\Bundle\ESIndexingBundle\Commands;
 
 use Shopware\Commands\ShopwareCommand;
+use Shopware\Models\Shop\Repository;
+use Shopware\Models\Shop\Shop;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -35,7 +39,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @copyright Copyright (c) shopware AG (http://www.shopware.de)
  */
-class AnalyzeCommand extends ShopwareCommand
+class AnalyzeCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -76,5 +80,47 @@ class AnalyzeCommand extends ShopwareCommand
         $table->setHeaders(['Token', 'Start', 'End', 'Type', 'position'])
             ->setRows($tokens)
             ->render();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        if ($argumentName === 'shopId') {
+            /** @var Repository $shopRepository */
+            $shopRepository = $this->getContainer()->get('models')->getRepository(Shop::class);
+            $queryBuilder = $shopRepository->createQueryBuilder('shop');
+
+            if (is_numeric($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('shop.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_').'%');
+            }
+
+            $result = $queryBuilder->select(['shop.id'])
+                ->addOrderBy($queryBuilder->expr()->asc('shop.id'))
+                ->getQuery()
+                ->getArrayResult();
+
+            return array_column($result, 'id');
+        }
+
+        if ($argumentName === 'analyzer') {
+            // TODO implement. I have no ES yet to test
+        }
+
+        if ($argumentName === 'query') {
+            // TODO implement. I have no ES yet to test
+        }
+
+        return false;
     }
 }
