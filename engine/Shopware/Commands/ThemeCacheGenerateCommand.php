@@ -29,6 +29,8 @@ use Shopware\Components\CacheManager;
 use Shopware\Components\Theme\Compiler;
 use Shopware\Models\Shop\Repository;
 use Shopware\Models\Shop\Shop;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -38,7 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  *
  * @copyright Copyright (c) shopware AG (http://www.shopware.de)
  */
-class ThemeCacheGenerateCommand extends ShopwareCommand
+class ThemeCacheGenerateCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -102,5 +104,43 @@ class ThemeCacheGenerateCommand extends ShopwareCommand
         $cacheManager = $this->container->get('shopware.cache_manager');
         $output->writeln('Clearing HTTP cache ...');
         $cacheManager->clearHttpCache();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        if ($optionName === 'shopId') {
+            $shopIdKeys = array_map(function ($key) { return $key + 1; }, array_keys($context->getWords(), '--shopId'));
+            $selectedShopIds = array_intersect_key($context->getWords(), array_combine($shopIdKeys, array_pad([], count($shopIdKeys), 0)));
+
+            /** @var Repository $shopRepository */
+            $shopRepository = $this->getContainer()->get('models')->getRepository(Shop::class);
+            $queryBuilder = $shopRepository->createQueryBuilder('shop');
+
+            if (is_numeric($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('shop.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_').'%');
+            }
+
+            $result = $queryBuilder->select(['shop.id'])
+                ->addOrderBy($queryBuilder->expr()->asc('shop.id'))
+                ->getQuery()
+                ->getArrayResult();
+
+
+            return array_diff(array_column($result, 'id'), $selectedShopIds);
+        }
+
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        return false;
     }
 }
