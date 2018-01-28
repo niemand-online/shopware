@@ -24,13 +24,17 @@
 
 namespace Shopware\Commands;
 
+use Shopware\Models\Shop\Repository;
+use Shopware\Models\Shop\Shop;
+use Stecman\Component\Symfony\Console\BashCompletion\Completion\CompletionAwareInterface;
+use Stecman\Component\Symfony\Console\BashCompletion\CompletionContext;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class WarmUpHttpCacheCommand extends ShopwareCommand
+class WarmUpHttpCacheCommand extends ShopwareCommand implements CompletionAwareInterface
 {
     /**
      * {@inheritdoc}
@@ -86,5 +90,40 @@ class WarmUpHttpCacheCommand extends ShopwareCommand
         }
 
         $output->writeln("\n The HttpCache is now warmed up");
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeOptionValues($optionName, CompletionContext $context)
+    {
+        return false;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function completeArgumentValues($argumentName, CompletionContext $context)
+    {
+        if ($argumentName === 'shopId') {
+            /** @var Repository $shopRepository */
+            $shopRepository = $this->getContainer()->get('models')->getRepository(Shop::class);
+            $queryBuilder = $shopRepository->createQueryBuilder('shop');
+
+            if (is_numeric($context->getCurrentWord())) {
+                $queryBuilder->andWhere($queryBuilder->expr()->like('shop.id', ':id'))
+                    ->setParameter('id', addcslashes($context->getCurrentWord(), '%_').'%');
+            }
+
+            $result = $queryBuilder->select(['shop.id'])
+                ->addOrderBy($queryBuilder->expr()->asc('shop.id'))
+                ->getQuery()
+                ->getArrayResult();
+
+
+            return array_column($result, 'id');
+        }
+
+        return false;
     }
 }
