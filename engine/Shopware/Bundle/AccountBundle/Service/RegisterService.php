@@ -32,7 +32,6 @@ use Shopware\Bundle\StoreFrontBundle\Struct\Shop;
 use Shopware\Components\Model\ModelManager;
 use Shopware\Components\NumberRangeIncrementerInterface;
 use Shopware\Components\Password\Manager;
-use Shopware\Components\Random;
 use Shopware\Components\Routing\Context;
 use Shopware\Models\Customer\Address;
 use Shopware\Models\Customer\Customer;
@@ -76,6 +75,11 @@ class RegisterService implements RegisterServiceInterface
     private $addressService;
 
     /**
+     * @var OptinServiceInterface
+     */
+    private $optinService;
+
+    /**
      * RegisterService constructor.
      *
      * @param ModelManager                    $modelManager
@@ -85,6 +89,7 @@ class RegisterService implements RegisterServiceInterface
      * @param NumberRangeIncrementerInterface $numberIncrementer
      * @param Connection                      $connection
      * @param AddressServiceInterface         $addressService
+     * @param OptinServiceInterface           $optinService
      */
     public function __construct(
         ModelManager $modelManager,
@@ -93,7 +98,8 @@ class RegisterService implements RegisterServiceInterface
         Manager $passwordManager,
         NumberRangeIncrementerInterface $numberIncrementer,
         Connection $connection,
-        AddressServiceInterface $addressService
+        AddressServiceInterface $addressService,
+        OptinServiceInterface $optinService
     ) {
         $this->modelManager = $modelManager;
         $this->validator = $validator;
@@ -102,6 +108,7 @@ class RegisterService implements RegisterServiceInterface
         $this->numberIncrementer = $numberIncrementer;
         $this->connection = $connection;
         $this->addressService = $addressService;
+        $this->optinService = $optinService;
     }
 
     /**
@@ -127,9 +134,7 @@ class RegisterService implements RegisterServiceInterface
                 $customer->getDoubleOptinRegister() &&
                 $customer->getDoubleOptinConfirmDate() === null
             ) {
-                $hash = Random::getAlphanumericString(32);
-
-                $this->doubleOptInSaveHash($customer, $hash);
+                $hash = $this->doubleOptInSaveHash($customer);
                 $this->doubleOptInVerificationMail($shop, $customer, $hash);
             }
 
@@ -301,18 +306,15 @@ class RegisterService implements RegisterServiceInterface
 
     /**
      * @param Customer $customer
-     * @param string   $hash
      *
+     * @return string
      * @throws \Doctrine\DBAL\DBALException
      */
-    private function doubleOptInSaveHash(Customer $customer, $hash)
+    private function doubleOptInSaveHash(Customer $customer)
     {
         /** @var Request $request */
         $request = Shopware()->Container()->get('front')->Request();
         $fromCheckout = ($request && $request->getParam('sTarget') === 'checkout');
-
-        $sql = "INSERT INTO `s_core_optin` (`type`, `datum`, `hash`, `data`)
-                VALUES ('swRegister', ?, ?, ?)";
 
         // Minimal billing data for Mailtemplates
         $storedData = [
@@ -327,6 +329,6 @@ class RegisterService implements RegisterServiceInterface
             'fromCheckout' => $fromCheckout,
         ];
 
-        $this->connection->executeQuery($sql, [$customer->getDoubleOptinEmailSentDate()->format('Y-m-d H:i:s'), $hash, serialize($storedData)]);
+        return $this->optinService->generateOptin(OptinServiceInterface::OPTIN_TYPE_REGISTER, $storedData, $customer->getDoubleOptinEmailSentDate());
     }
 }
