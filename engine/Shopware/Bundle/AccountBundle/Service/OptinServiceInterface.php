@@ -15,6 +15,8 @@ interface OptinServiceInterface
 
     const OPTIN_TYPE_PRODUCT_VOTE = 'swProductVote';
 
+    const OPTIN_TYPE_PASSWORD = 'swPassword';
+
     /**
      * @param Optin $optin
      * @return Optin

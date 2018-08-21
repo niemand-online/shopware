@@ -25,6 +25,8 @@ use Shopware\Bundle\AccountBundle\Form\Account\EmailUpdateFormType;
 use Shopware\Bundle\AccountBundle\Form\Account\PasswordUpdateFormType;
 use Shopware\Bundle\AccountBundle\Form\Account\ProfileUpdateFormType;
 use Shopware\Bundle\AccountBundle\Form\Account\ResetPasswordFormType;
+use Shopware\Bundle\AccountBundle\Service\OptinServiceInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Models\Customer\Customer;
 
 /**
@@ -465,7 +467,14 @@ class Shopware_Controllers_Frontend_Account extends Enlight_Controller_Action
             return;
         }
 
-        $hash = \Shopware\Components\Random::getAlphanumericString(32);
+        $optin = new Optin();
+        $optin->setData((string) $userID)
+            ->setType(OptinServiceInterface::OPTIN_TYPE_PASSWORD);
+
+        /** @var OptinServiceInterface $optinService */
+        $optinService = $this->container->get('shopware_account.optin_service');
+        $hash = $optinService->create($optin)->getHash();
+        // TODO react on creation exception
 
         $context = [
             'sUrlReset' => $this->Front()->Router()->assemble(['controller' => 'account', 'action' => 'resetPassword', 'hash' => $hash]),
@@ -508,10 +517,7 @@ class Shopware_Controllers_Frontend_Account extends Enlight_Controller_Action
         $mail = Shopware()->TemplateMail()->createMail('sCONFIRMPASSWORDCHANGE', $context);
         $mail->addTo($email);
         $mail->send();
-
-        // Add the hash to the optin table
-        $sql = "INSERT INTO `s_core_optin` (`type`, `datum`, `hash`, `data`) VALUES ('swPassword', NOW(), ?, ?)";
-        Shopware()->Db()->query($sql, [$hash, $userID]);
+        // TODO if send fails delete generated optin
     }
 
     /**
