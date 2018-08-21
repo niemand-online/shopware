@@ -22,6 +22,9 @@
  * our trademarks remain entirely with us.
  */
 
+use Shopware\Bundle\AccountBundle\Service\OptinServiceInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
+
 /**
  * Newsletter controller
  */
@@ -84,19 +87,20 @@ class Shopware_Controllers_Frontend_Newsletter extends Enlight_Controller_Action
             if ($this->View()->sStatus['code'] == 3) {
                 if ($this->View()->sStatus['isNewRegistration']) {
                     Shopware()->Modules()->Admin()->sNewsletterSubscription(Shopware()->System()->_POST['newsletter'], true);
-                    $hash = \Shopware\Components\Random::getAlphanumericString(32);
-                    $data = serialize(Shopware()->System()->_POST->toArray());
+
+                    $optin = new Optin();
+                    $optin->setType(OptinServiceInterface::OPTIN_TYPE_NEWSLETTER)
+                        ->setData(serialize(Shopware()->System()->_POST->toArray()));
+
+                    /** @var OptinServiceInterface $optinService */
+                    $optinService = $this->container->get('shopware_account.optin_service');
+                    $hash = $optinService->create($optin)->getHash();
+                    // TODO reacton create exception
 
                     $link = $this->Front()->Router()->assemble(['sViewport' => 'newsletter', 'action' => 'confirm', 'sConfirmation' => $hash]);
 
                     $this->sendMail(Shopware()->System()->_POST['newsletter'], 'sOPTINNEWSLETTER', $link);
-
-                    Shopware()->Db()->query('
-                    INSERT INTO s_core_optin (datum,hash,data,type)
-                    VALUES (
-                    now(),?,?,"swNewsletter"
-                    )
-                    ', [$hash, $data]);
+                    // TODO if send fails delete generated optin
                 }
 
                 $this->View()->sStatus = ['code' => 3, 'message' => Shopware()->Snippets()->getNamespace('frontend')->get('sMailConfirmation')];

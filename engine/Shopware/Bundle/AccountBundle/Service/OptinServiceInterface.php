@@ -11,6 +11,8 @@ interface OptinServiceInterface
 
     const OPTIN_TYPE_NOTIFICATION = 'swNotification';
 
+    const OPTIN_TYPE_NEWSLETTER = 'swNewsletter';
+
     /**
      * @param Optin $optin
      * @return Optin
