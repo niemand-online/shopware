@@ -23,6 +23,8 @@
  */
 use Doctrine\DBAL\Connection;
 use Shopware\Bundle\AccountBundle\Service\AddressServiceInterface;
+use Shopware\Bundle\AccountBundle\Service\OptinServiceInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Bundle\AttributeBundle\Service\CrudService;
 use Shopware\Bundle\StoreFrontBundle;
 use Shopware\Components\Cart\BasketHelperInterface;
@@ -173,6 +175,11 @@ class sAdmin
     private $basketHelper;
 
     /**
+     * @var OptinServiceInterface
+     */
+    private $optinService;
+
+    /**
      * @var array
      */
     private $cache = [
@@ -237,6 +244,7 @@ class sAdmin
         $this->translationComponent = $translationComponent ?: Shopware()->Container()->get('translation');
         $this->connection = $connection ?: Shopware()->Container()->get('dbal_connection');
         $this->basketHelper = Shopware()->Container()->get('shopware.cart.basket_helper');
+        $this->optinService = Shopware()->Container()->get('shopware_account.optin_service');
     }
 
     /**
@@ -3574,12 +3582,13 @@ SQL;
                 'register' => null,
             ];
 
-            $sql = 'INSERT INTO `s_core_optin`
-                    (`type`, `datum`, `hash`, `data`)
-                    VALUES
-                    (?, ?, ?, ?)';
-            $params = ['swRegister', $dateString, $hash, serialize($storedData)];
+            $optin = new Optin();
+            $optin->setType(OptinServiceInterface::OPTIN_TYPE_REGISTER)
+                ->setData(serialize($storedData));
+            $dateString = $this->optinService->create($optin)->getDate()->format('Y-m-d H:i:s');
+            // TODO react on create exception
         }
+
         $this->db->executeQuery($sql, $params);
 
         $sql = 'UPDATE `s_user`
