@@ -127,5 +127,7 @@
         <service id="shopware_account.optin_service" class="Shopware\Bundle\AccountBundle\Service\OptinService">
             <argument id="dbal_connection" type="service"/>
         </service>
+
+        <service id="shopware_account.optin_hydrator_service" class="Shopware\Bundle\AccountBundle\Service\OptinHydratorService"/>
     </services>
 </container>
