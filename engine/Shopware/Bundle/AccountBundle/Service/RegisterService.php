@@ -26,7 +26,9 @@ namespace Shopware\Bundle\AccountBundle\Service;
 
 use Doctrine\DBAL\Connection;
 use Enlight_Controller_Request_Request as Request;
+use phpDocumentor\Reflection\DocBlock\Serializer;
 use Shopware\Bundle\AccountBundle\Service\Validator\CustomerValidatorInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Bundle\StoreFrontBundle\Service\Core\ContextService;
 use Shopware\Bundle\StoreFrontBundle\Struct\Shop;
 use Shopware\Components\Model\ModelManager;
@@ -308,7 +310,7 @@ class RegisterService implements RegisterServiceInterface
      * @param Customer $customer
      *
      * @return string
-     * @throws \Doctrine\DBAL\DBALException
+     * @throws \Shopware\Bundle\AccountBundle\Exception\OptinCreateException
      */
     private function doubleOptInSaveHash(Customer $customer)
     {
@@ -329,6 +331,11 @@ class RegisterService implements RegisterServiceInterface
             'fromCheckout' => $fromCheckout,
         ];
 
-        return $this->optinService->generateOptin(OptinServiceInterface::OPTIN_TYPE_REGISTER, $storedData, $customer->getDoubleOptinEmailSentDate());
+        $optin = new Optin();
+        $optin->setDate($customer->getDoubleOptinEmailSentDate())
+            ->setData(serialize($storedData))
+            ->setType(OptinServiceInterface::OPTIN_TYPE_REGISTER);
+
+        return $this->optinService->create($optin)->getHash();
     }
 }

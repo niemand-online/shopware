@@ -2,18 +2,17 @@
 
 namespace Shopware\Bundle\AccountBundle\Service;
 
-use DateTime;
+use Shopware\Bundle\AccountBundle\Exception\OptinCreateException;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 
 interface OptinServiceInterface
 {
     const OPTIN_TYPE_REGISTER = 'swRegister';
 
     /**
-     * @param string        $optinType
-     * @param array         $data
-     * @param DateTime|null $date
-     *
-     * @return string
+     * @param Optin $optin
+     * @return Optin
+     * @throws OptinCreateException
      */
-    public function generateOptin($optinType, array $data = [], $date = null);
+    public function create(Optin $optin);
 }

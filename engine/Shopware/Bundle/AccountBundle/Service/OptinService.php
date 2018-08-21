@@ -4,6 +4,10 @@ namespace Shopware\Bundle\AccountBundle\Service;
 
 use DateTime;
 use Doctrine\DBAL\Connection;
+use Exception;
+use InvalidArgumentException;
+use Shopware\Bundle\AccountBundle\Exception\OptinCreateException;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Components\Random;
 
 class OptinService implements OptinServiceInterface
@@ -21,22 +25,60 @@ class OptinService implements OptinServiceInterface
     /**
      * {@inheritdoc}
      */
-    public function generateOptin($optinType, array $data = [], $date = null)
+    public function create(Optin $optin)
     {
-        if (is_null($date)) {
-            $date = new DateTime();
+        try {
+            return $this->createUnsafe($optin);
+        } catch (Exception $exception) {
+            throw new OptinCreateException($exception);
+        }
+    }
+
+    /**
+     * @param Optin $optin
+     * @return Optin
+     * @throws InvalidArgumentException
+     */
+    protected function createUnsafe(Optin $optin)
+    {
+        if (!is_null($optin->getId())) {
+            throw new InvalidArgumentException('$optin has id and may be already stored');
         }
 
-        $hash = Random::getAlphanumericString(32);
+        if (empty($optin->getType())) {
+            throw new InvalidArgumentException('$optin has no type');
+        }
 
-        $this->insertOptin($optinType, $date, $hash, $data);
+        $payload = clone $optin;
 
-        return $hash;
+        if (is_null($payload->getDate())) {
+            $payload->setDate(new DateTime());
+        }
+
+        if (empty($payload->getHash())) {
+            $payload->setHash(Random::getAlphanumericString(32));
+        }
+
+        $id = $this->insertOptin($payload->getType(), $payload->getDate(), $payload->getHash(), $payload->getData());
+
+        $payload->setId($id);
+        return $payload;
     }
-    
+
+    /**
+     * @param string $optinType
+     * @param DateTime $dateTime
+     * @param string $hash
+     * @param string $data
+     * @return int|null
+     */
     protected function insertOptin($optinType, DateTime $dateTime, $hash, $data)
     {
         $sql = "INSERT INTO `s_core_optin` (`type`, `datum`, `hash`, `data`) VALUES (?, ?, ?, ?)";
-        $this->connection->executeQuery($sql, [$optinType, $dateTime->format('Y-m-d H:i:s'), $hash, serialize($data)]);
+        if ($this->connection->insert($sql, [$optinType, $dateTime->format('Y-m-d H:i:s'), $hash, $data])) {
+            return (int) $this->connection->lastInsertId();
+        }
+
+        return null;
     }
 }
