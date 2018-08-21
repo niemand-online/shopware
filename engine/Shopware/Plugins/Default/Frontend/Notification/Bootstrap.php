@@ -21,6 +21,10 @@
  * trademark license. Therefore any rights, title and interest in
  * our trademarks remain entirely with us.
  */
+
+use Shopware\Bundle\AccountBundle\Exception\OptinCreateException;
+use Shopware\Bundle\AccountBundle\Service\OptinServiceInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Components\Routing\Context;
 
 /**
@@ -162,7 +166,22 @@ class Shopware_Plugins_Frontend_Notification_Bootstrap extends Shopware_Componen
                 if (empty($AlreadyNotified)) {
                     $action->View()->NotifyAlreadyRegistered = false;
 
-                    $hash = \Shopware\Components\Random::getAlphanumericString(32);
+                    $basePath = $action->Front()->Router()->assemble(['sViewport' => 'index']);
+                    Shopware()->System()->_POST['sLanguage'] = Shopware()->Shop()->getId();
+                    Shopware()->System()->_POST['sShopPath'] = $basePath . Shopware()->Config()->sBASEFILE;
+
+                    try {
+                        $optin = new Optin();
+                        $optin->setType(OptinServiceInterface::OPTIN_TYPE_NOTIFICATION);
+                        $optin->setData(serialize(Shopware()->System()->_POST->toArray()));
+
+                        /** @var OptinServiceInterface $optinService */
+                        $optinService = Shopware()->Container()->get('shopware_account.optin_service');
+                        $hash = $optinService->create($optin)->getHash();
+                    } catch (OptinCreateException $createException) {
+                        // TODO we cannot send an email because we have no optin
+                    }
+
                     $link = $action->Front()->Router()->assemble([
                         'sViewport' => 'detail',
                         'sArticle' => $id,
@@ -174,16 +193,6 @@ class Shopware_Plugins_Frontend_Notification_Bootstrap extends Shopware_Componen
 
                     $name = Shopware()->Modules()->Articles()->sGetArticleNameByOrderNumber($notifyOrderNumber);
 
-                    $basePath = $action->Front()->Router()->assemble(['sViewport' => 'index']);
-                    Shopware()->System()->_POST['sLanguage'] = Shopware()->Shop()->getId();
-                    Shopware()->System()->_POST['sShopPath'] = $basePath . Shopware()->Config()->sBASEFILE;
-
-                    $sql = '
-                        INSERT INTO s_core_optin (datum, hash, data, type)
-                        VALUES (NOW(), ?, ?, "swNotification")
-                    ';
-                    Shopware()->Db()->query($sql, [$hash, serialize(Shopware()->System()->_POST->toArray())]);
-
                     $context = [
                         'sConfirmLink' => $link,
                         'sArticleName' => $name,
@@ -192,6 +201,7 @@ class Shopware_Plugins_Frontend_Notification_Bootstrap extends Shopware_Componen
                     $mail = Shopware()->TemplateMail()->createMail('sACCEPTNOTIFICATION', $context);
                     $mail->addTo($email);
                     $mail->send();
+                    // TODO if send fails delete generated optin
                     Shopware()->Session()->sNotifcationArticleWaitingForOptInApprovement[$notifyOrderNumber] = true;
                 } else {
                     $action->View()->NotifyAlreadyRegistered = true;

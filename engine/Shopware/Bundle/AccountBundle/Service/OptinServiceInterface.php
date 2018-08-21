@@ -9,6 +9,8 @@ interface OptinServiceInterface
 {
     const OPTIN_TYPE_REGISTER = 'swRegister';
 
+    const OPTIN_TYPE_NOTIFICATION = 'swNotification';
+
     /**
      * @param Optin $optin
      * @return Optin
