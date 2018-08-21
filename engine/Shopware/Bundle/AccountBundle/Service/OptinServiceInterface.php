@@ -13,6 +13,8 @@ interface OptinServiceInterface
 
     const OPTIN_TYPE_NEWSLETTER = 'swNewsletter';
 
+    const OPTIN_TYPE_PRODUCT_VOTE = 'swProductVote';
+
     /**
      * @param Optin $optin
      * @return Optin

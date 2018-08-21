@@ -21,6 +21,9 @@
  * trademark license. Therefore any rights, title and interest in
  * our trademarks remain entirely with us.
  */
+
+use Shopware\Bundle\AccountBundle\Service\OptinServiceInterface;
+use Shopware\Bundle\AccountBundle\Struct\Optin;
 use Shopware\Components\Random;
 
 /**
@@ -227,14 +230,14 @@ class Shopware_Controllers_Frontend_Detail extends Enlight_Controller_Action
             if (!empty(Shopware()->Config()->sOPTINVOTE)
                 && !$voteConfirmed && empty(Shopware()->Session()->sUserId)
             ) {
-                $hash = \Shopware\Components\Random::getAlphanumericString(32);
-                $sql = '
-                    INSERT INTO s_core_optin (datum, hash, data, type)
-                    VALUES (NOW(), ?, ?, "swProductVote")
-                ';
-                Shopware()->Db()->query($sql, [
-                    $hash, serialize(Shopware()->System()->_POST->toArray()),
-                ]);
+                $optin = new Optin();
+                $optin->setType(OptinServiceInterface::OPTIN_TYPE_PRODUCT_VOTE)
+                    ->setData(serialize(Shopware()->System()->_POST->toArray()));
+
+                /** @var OptinServiceInterface $optinService */
+                $optinService = $this->container->get('shopware_account.optin_service');
+                $hash = $optinService->create($optin)->getHash();
+                // TODO reaction on create exception
 
                 $link = $this->Front()->Router()->assemble([
                     'sViewport' => 'detail',
@@ -251,6 +254,7 @@ class Shopware_Controllers_Frontend_Detail extends Enlight_Controller_Action
                 $mail = Shopware()->TemplateMail()->createMail('sOPTINVOTE', $context);
                 $mail->addTo($this->Request()->getParam('sVoteMail'));
                 $mail->send();
+                // TODO if send fails delete generated optin
             } else {
                 unset(Shopware()->Config()->sOPTINVOTE);
                 Shopware()->Modules()->Articles()->sSaveComment($id);
